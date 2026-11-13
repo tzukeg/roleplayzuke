@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<title>Мои Ролевые</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#121212;
+  --surface:#1e1e1e;
+  --surface2:#2a2a2a;
+  --text:#e0e0e0;
+  --muted:#a0a0a0;
+  --accent:#bb86fc;
+  --border:#333;
+  --user-msg:#bb86fc;
+  --user-msg-text:#000000;
+  --bot-msg:#1e1e1e;
+  --bot-msg-text:#e0e0e0;
+  --input-bg:#1e1e1e;
+  --input-text:#e0e0e0;
+  --btn-bg:#bb86fc;
+  --btn-text:#000000;
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.screen{display:none;flex:1;flex-direction:column;padding:16px;overflow-y:auto}
+.screen.active{display:flex}
+input,textarea,select,button{font-family:inherit}
+.search-bar{width:100%;padding:12px 16px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--input-text);font-size:16px;margin-bottom:16px;outline:none}
+.folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.folder-card{background:var(--surface);border-radius:var(--radius);padding:16px;border-left:4px solid var(--accent);cursor:pointer}
+.folder-card:hover{background:var(--surface2)}
+.folder-name{font-weight:600;margin-bottom:4px}
+.folder-count{font-size:12px;color:var(--muted)}
+.role-list{display:flex;flex-direction:column;gap:8px}
+.role-item{background:var(--surface);border-radius:var(--radius);padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.role-item:hover{background:var(--surface2)}
+.btn{background:var(--btn-bg);color:var(--btn-text);border:none;border-radius:var(--radius);padding:12px 20px;font-size:16px;font-weight:600;cursor:pointer}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-small{padding:8px 14px;font-size:14px}
+.header-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.header-bar h2{flex:1;font-size:20px}
+.chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin-bottom:12px;padding:4px}
+.msg{max-width:85%;padding:12px 16px;border-radius:var(--radius);line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+.msg.bot{background:var(--bot-msg);color:var(--bot-msg-text);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.user{background:var(--user-msg);color:var(--user-msg-text);align-self:flex-end;border-bottom-right-radius:4px}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;padding:14px 16px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--input-text);font-size:16px;resize:none;outline:none;min-height:52px;max-height:120px}
+.notes-panel{background:var(--surface2);border-radius:var(--radius);padding:16px;margin-top:12px;font-size:14px}
+.notes-panel textarea{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:12px;color:var(--input-text);padding:12px;font-size:14px;min-height:120px;resize:vertical;margin-top:8px;outline:none}
+.hidden{display:none!important}
+.form-group{margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:14px;color:var(--muted)}
+.form-group input,.form-group textarea,.form-group select{background:var(--input-bg);border:1px solid var(--border);border-radius:12px;color:var(--input-text);padding:12px;font-size:15px;outline:none}
+.settings-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.model-switch{display:flex;gap:8px;margin-bottom:12px}
+.model-switch button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;cursor:pointer}
+.model-switch button.selected{background:var(--btn-bg);color:var(--btn-text);border-color:var(--btn-bg);font-weight:700}
+.color-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.color-row label{font-size:14px;color:var(--text)}
+.color-row input[type=color]{width:56px;height:40px;border:none;border-radius:10px;background:none;cursor:pointer}
+.switch-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.switch-row label{font-size:14px}
+.switch-row input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН: КАТАЛОГ -->
+<div id="screen-catalog" class="screen active">
+  <div class="header-bar">
+    <h2>Мои Ролевые</h2>
+    <button class="btn btn-small" onclick="openRoleForm()">+ Ролевая</button>
+    <button class="btn btn-secondary btn-small" onclick="openFolderForm()">+ Папка</button>
+    <button class="btn btn-secondary btn-small" onclick="openSettings()">⚙</button>
+  </div>
+  <input type="text" class="search-bar" id="searchInput" placeholder="Поиск по названию..." oninput="renderCatalog()">
+  <div id="foldersContainer" class="folder-grid"></div>
+  <div id="rolesContainer" class="role-list"></div>
+</div>
+
+<!-- ЭКРАН: ФОРМА РОЛЕВОЙ -->
+<div id="screen-roleform" class="screen">
+  <div class="header-bar">
+    <button class="btn btn-secondary btn-small" onclick="backToCatalog()">← Назад</button>
+    <h2 id="roleFormTitle">Новая ролевая</h2>
+  </div>
+  <div class="form-group"><label>Название</label><input id="rfName" placeholder="Например: Тёмный лес"></div>
+  <div class="form-group"><label>Папка</label><select id="rfFolder"></select></div>
+  <div class="form-group"><label>Модель по умолчанию</label>
+    <div class="model-switch">
+      <button type="button" id="btnGemini" onclick="pickModel('gemini')">Gemini</button>
+      <button type="button" id="btnDeepseek" onclick="pickModel('deepseek')">DeepSeek</button>
+    </div>
+  </div>
+  <div class="form-group"><label>Вселенная / окружение</label><textarea id="rfWorld" rows="3" placeholder="Мир, местность, атмосфера..."></textarea></div>
+  <div class="form-group"><label>Сюжет / что происходит</label><textarea id="rfPlot" rows="3"></textarea></div>
+  <div class="form-group"><label>Детали мира</label><textarea id="rfDetails" rows="3"></textarea></div>
+  <div class="form-group"><label>Персонаж бота (характер, описание)</label><textarea id="rfChar" rows="3"></textarea></div>
+  <div class="settings-row">
+    <button class="btn" onclick="saveRole()">Сохранить</button>
+    <button class="btn btn-secondary" onclick="deleteCurrentRole()" id="rfDeleteBtn" style="display:none;">Удалить</button>
+  </div>
+</div>
+
+<!-- ЭКРАН: ЧАТ -->
+<div id="screen-chat" class="screen">
+  <div class="header-bar">
+    <button class="btn btn-secondary btn-small" onclick="backToCatalog()">← Назад</button>
+    <h2 id="chatTitle">Ролевая</h2>
+    <button class="btn btn-secondary btn-small" onclick="toggleNotes()">📝</button>
+    <button class="btn btn-secondary btn-small" onclick="editCurrentRole()">✎</button>
+  </div>
+  <div id="chatMessages" class="chat-messages"></div>
+  <div id="notesPanel" class="notes-panel hidden">
+    <strong>Блокнот (ключевая информация)</strong>
+    <textarea id="notesContent" placeholder="Что бот должен помнить..."></textarea>
+    <button class="btn btn-small" style="margin-top:8px;" onclick="saveNotes()">Сохранить заметки</button>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chatInput" placeholder="Ваше сообщение..." rows="1"></textarea>
+    <button class="btn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<!-- ЭКРАН: НАСТРОЙКИ -->
+<div id="screen-settings" class="screen">
+  <div class="header-bar">
+    <button class="btn btn-secondary btn-small" onclick="backToCatalog()">← Назад</button>
+    <h2>Настройки</h2>
+  </div>
+
+  <h3 style="margin-bottom:12px;font-size:16px;">API-ключи</h3>
+  <div class="form-group"><label>Gemini API-ключ</label><input id="keyGemini" placeholder="AIza..."></div>
+  <div class="form-group"><label>DeepSeek API-ключ</label><input id="keyDeepseek" placeholder="sk-..."></div>
+  <div class="switch-row">
+    <label>Автопереключение при ошибке модели</label>
+    <input type="checkbox" id="autoSwitch">
+  </div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Ключи хранятся только на этом телефоне. Вставляются один раз, больше не пропадают.</p>
+
+  <h3 style="margin-bottom:12px;font-size:16px;">Цвета интерфейса</h3>
+  <div class="color-row"><label>Фон приложения</label><input type="color" id="colBg"></div>
+  <div class="color-row"><label>Моё сообщение в чате</label><input type="color" id="colUserMsg"></div>
+  <div class="color-row"><label>Текст моих сообщений</label><input type="color" id="colUserText"></div>
+  <div class="color-row"><label>Сообщение бота</label><input type="color" id="colBotMsg"></div>
+  <div class="color-row"><label>Текст сообщений бота</label><input type="color" id="colBotText"></div>
+  <div class="color-row"><label>Фон кнопок</label><input type="color" id="colBtn"></div>
+  <div class="color-row"><label>Текст на кнопках</label><input type="color" id="colBtnText"></div>
+  <div class="color-row"><label>Строка ввода (фон)</label><input type="color" id="colInputBg"></div>
+  <div class="color-row"><label>Строка ввода (текст)</label><input type="color" id="colInputText"></div>
+  <div class="color-row"><label>Основной цвет текста</label><input type="color" id="colText"></div>
+
+  <div class="settings-row" style="margin-top:16px;">
+    <button class="btn" onclick="saveSettings()">Сохранить всё</button>
+    <button class="btn btn-secondary" onclick="resetColors()">Сбросить цвета</button>
+  </div>
+</div>
+
+<!-- ЭКРАН: ФОРМА ПАПКИ -->
+<div id="screen-folderform" class="screen">
+  <div class="header-bar">
+    <button class="btn btn-secondary btn-small" onclick="backToCatalog()">← Назад</button>
+    <h2>Новая папка</h2>
+  </div>
+  <div class="form-group"><label>Название папки</label><input id="ffName" placeholder="Фэнтези, Sci-Fi..."></div>
+  <div class="form-group"><label>Цвет</label><input id="ffColor" type="color" value="#bb86fc" style="height:52px;padding:4px;"></div>
+  <button class="btn" onclick="saveFolder()">Сохранить</button>
+</div>
+
+<script>
+// ===== БАЗА ДАННЫХ =====
+let db;
+const DB_NAME='RoleplayDB', DB_VERSION=1;
+function initDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onerror=()=>rej(r.error);r.onsuccess=()=>{db=r.result;res()};r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains('roles'))d.createObjectStore('roles',{keyPath:'id',autoIncrement:true});if(!d.objectStoreNames.contains('messages')){const s=d.createObjectStore('messages',{keyPath:'id',autoIncrement:true});s.createIndex('roleId','roleId',{unique:false})}if(!d.objectStoreNames.contains('notes'))d.createObjectStore('notes',{keyPath:'roleId'});if(!d.objectStoreNames.contains('folders'))d.createObjectStore('folders',{keyPath:'id',autoIncrement:true})}})}
+function dbAll(s){return new Promise((res,rej)=>{const t=db.transaction(s,'readonly');const r=t.objectStore(s).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function dbAdd(s,d){return new Promise((res,rej)=>{const t=db.transaction(s,'readwrite');const r=t.objectStore(s).add(d);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function dbPut(s,d){return new Promise((res,rej)=>{const t=db.transaction(s,'readwrite');const r=t.objectStore(s).put(d);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function dbGet(s,k){return new Promise((res,rej)=>{const t=db.transaction(s,'readonly');const r=t.objectStore(s).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function dbDel(s,k){return new Promise((res,rej)=>{const t=db.transaction(s,'readwrite');const r=t.objectStore(s).delete(k);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function dbByIndex(s,i,v){return new Promise((res,rej)=>{const t=db.transaction(s,'readonly');const r=t.objectStore(s).index(i).getAll(v);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+
+// ===== ПЕРЕМЕННЫЕ =====
+let currentRoleId=null, allRoles=[], allFolders=[], editingRoleId=null, editingModel='gemini';
+let settings={gemini:'',deepseek:'',autoSwitch:false};
+let colors={bg:'#121212',userMsg:'#bb86fc',userText:'#000000',botMsg:'#1e1e1e',botText:'#e0e0e0',btn:'#bb86fc',btnText:'#000000',inputBg:'#1e1e1e',inputText:'#e0e0e0',text:'#e0e0e0'};
+const defaultColors={...colors};
+
+// ===== НАВИГАЦИЯ =====
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function backToCatalog(){showScreen('screen-catalog');renderCatalog()}
+
+// ===== ПРИМЕНЕНИЕ ЦВЕТОВ =====
+function applyColors(){
+  const r=document.documentElement.style;
+  r.setProperty('--bg',colors.bg);
+  r.setProperty('--user-msg',colors.userMsg);
+  r.setProperty('--user-msg-text',colors.userText);
+  r.setProperty('--bot-msg',colors.botMsg);
+  r.setProperty('--bot-msg-text',colors.botText);
+  r.setProperty('--btn-bg',colors.btn);
+  r.setProperty('--btn-text',colors.btnText);
+  r.setProperty('--input-bg',colors.inputBg);
+  r.setProperty('--input-text',colors.inputText);
+  r.setProperty('--text',colors.text);
+  r.setProperty('--accent',colors.btn);
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content',colors.bg);
+}
+
+// ===== КАТАЛОГ =====
+async function renderCatalog(){
+  const term=(document.getElementById('searchInput').value||'').toLowerCase();
+  allRoles=await dbAll('roles');allFolders=await dbAll('folders');
+  const filtered=allRoles.filter(r=>r.name.toLowerCase().includes(term));
+  const fc=document.getElementById('foldersContainer');fc.innerHTML='';
+  const groups={};
+  filtered.forEach(r=>{const f=r.folder||'Без папки';(groups[f]=groups[f]||[]).push(r)});
+  Object.keys(groups).forEach(fname=>{
+    const fol=allFolders.find(f=>f.name===fname);
+    const color=fol?fol.color:colors.btn;
+    const c=document.createElement('div');c.className='folder-card';c.style.borderLeftColor=color;
+    c.innerHTML=`<div class="folder-name">${escapeHtml(fname)}</div><div class="folder-count">${groups[fname].length} шт.</div>`;
+    fc.appendChild(c);
+  });
+  const rc=document.getElementById('rolesContainer');rc.innerHTML='';
+  filtered.forEach(r=>{
+    const fol=allFolders.find(f=>f.name===r.folder);
+    const color=fol?fol.color:colors.btn;
+    const i=document.createElement('div');i.className='role-item';
+    i.innerHTML=`<span>${escapeHtml(r.name)}</span><span style="color:${color};font-size:12px;">${escapeHtml(r.folder||'')} · ${r.model==='deepseek'?'DeepSeek':'Gemini'}</span>`;
+    i.onclick=()=>openChat(r.id);rc.appendChild(i);
+  });
+}
+function escapeHtml(t){return String(t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+// ===== ФОРМА РОЛЕВОЙ =====
+async function openRoleForm(role){
+  editingRoleId=role?role.id:null;
+  editingModel=role?role.model:'gemini';
+  document.getElementById('roleFormTitle').textContent=role?'Редактировать':'Новая ролевая';
+  document.getElementById('rfName').value=role?role.name:'';
+  document.getElementById('rfWorld').value=role?role.world||'':'';
+  document.getElementById('rfPlot').value=role?role.plot||'':'';
+  document.getElementById('rfDetails').value=role?role.details||'':'';
+  document.getElementById('rfChar').value=role?role.character||'':'';
+  document.getElementById('rfDeleteBtn').style.display=role?'inline-block':'none';
+  pickModel(editingModel);
+  allFolders=await dbAll('folders');
+  const sel=document.getElementById('rfFolder');sel.innerHTML='<option value="">Без папки</option>';
+  allFolders.forEach(f=>{const o=document.createElement('option');o.value=f.name;o.textContent=f.name;if(role&&role.folder===f.name)o.selected=true;sel.appendChild(o)});
+  showScreen('screen-roleform');
+}
+function pickModel(m){
+  editingModel=m;
+  document.getElementById('btnGemini').classList.toggle('selected',m==='gemini');
+  document.getElementById('btnDeepseek').classList.toggle('selected',m==='deepseek');
+}
+async function saveRole(){
+  const data={name:document.getElementById('rfName').value.trim(),folder:document.getElementById('rfFolder').value,model:editingModel,world:document.getElementById('rfWorld').value,plot:document.getElementById('rfPlot').value,details:document.getElementById('rfDetails').value,character:document.getElementById('rfChar').value};
+  if(!data.name){alert('Введите название');return}
+  if(editingRoleId){data.id=editingRoleId;await dbPut('roles',data)}else{data.createdAt=Date.now();await dbAdd('roles',data)}
+  backToCatalog();
+}
+async function deleteCurrentRole(){if(!editingRoleId)return;if(!confirm('Удалить ролевую?'))return;await dbDel('roles',editingRoleId);backToCatalog()}
+function editCurrentRole(){const r=allRoles.find(x=>x.id===currentRoleId);if(r)openRoleForm(r)}
+
+// ===== ПАПКИ =====
+function openFolderForm(){document.getElementById('ffName').value='';showScreen('screen-folderform')}
+async function saveFolder(){const n=document.getElementById('ffName').value.trim();if(!n)return;await dbAdd('folders',{name:n,color:document.getElementById('ffColor').value});backToCatalog()}
+
+// ===== НАСТРОЙКИ =====
+async function openSettings(){
+  const s=await dbGet('notes','__settings__');
+  if(s){settings={gemini:s.gemini||'',deepseek:s.deepseek||'',autoSwitch:!!s.autoSwitch}}
+  const c=await dbGet('notes','__colors__');
+  if(c){colors={...defaultColors,...c.colors}}
+  document.getElementById('keyGemini').value=settings.gemini;
+  document.getElementById('keyDeepseek').value=settings.deepseek;
+  document.getElementById('autoSwitch').checked=settings.autoSwitch;
+  document.getElementById('colBg').value=colors.bg;
+  document.getElementById('colUserMsg').value=colors.userMsg;
+  document.getElementById('colUserText').value=colors.userText;
+  document.getElementById('colBotMsg').value=colors.botMsg;
+  document.getElementById('colBotText').value=colors.botText;
+  document.getElementById('colBtn').value=colors.btn;
+  document.getElementById('colBtnText').value=colors.btnText;
+  document.getElementById('colInputBg').value=colors.inputBg;
+  document.getElementById('colInputText').value=colors.inputText;
+  document.getElementById('colText').value=colors.text;
+  showScreen('screen-settings');
+}
+async function saveSettings(){
+  settings.gemini=document.getElementById('keyGemini').value.trim();
+  settings.deepseek=document.getElementById('keyDeepseek').value.trim();
+  settings.autoSwitch=document.getElementById('autoSwitch').checked;
+  await dbPut('notes',{roleId:'__settings__',...settings});
+  colors={
+    bg:document.getElementById('colBg').value,
+    userMsg:document.getElementById('colUserMsg').value,
+    userText:document.getElementById('colUserText').value,
+    botMsg:document.getElementById('colBotMsg').value,
+    botText:document.getElementById('colBotText').value,
+    btn:document.getElementById('colBtn').value,
+    btnText:document.getElementById('colBtnText').value,
+    inputBg:document.getElementById('colInputBg').value,
+    inputText:document.getElementById('colInputText').value,
+    text:document.getElementById('colText').value
+  };
+  await dbPut('notes',{roleId:'__colors__',colors});
+  applyColors();
+  alert('Сохранено');
+  backToCatalog();
+}
+async function resetColors(){
+  colors={...defaultColors};
+  applyColors();
+  await dbPut('notes',{roleId:'__colors__',colors});
+  alert('Цвета сброшены');
+  openSettings();
+}
+
+// ===== ЧАТ =====
+async function openChat(id){
+  currentRoleId=id;const r=allRoles.find(x=>x.id===id);
+  document.getElementById('chatTitle').textContent=r?r.name:'';
+  showScreen('screen-chat');await loadMessages(id);await loadNotes(id);
+  document.getElementById('chatInput').focus();
+}
+async function loadMessages(id){
+  const msgs=await dbByIndex('messages','roleId',id);const c=document.getElementById('chatMessages');c.innerHTML='';
+  msgs.sort((a,b)=>a.timestamp-b.timestamp).forEach(m=>{const d=document.createElement('div');d.className='msg '+m.sender;d.textContent=m.text;c.appendChild(d)});
+  c.scrollTop=c.scrollHeight;
+}
+async function sendMessage(){
+  const inp=document.getElementById('chatInput');const text=inp.value.trim();if(!text||!currentRoleId)return;
+  await dbAdd('messages',{roleId:currentRoleId,sender:'user',text,timestamp:Date.now()});
+  inp.value='';inp.style.height='auto';await loadMessages(currentRoleId);
+  const r=allRoles.find(x=>x.id===currentRoleId);
+  if(!r){alert('Ролевая не найдена');return}
+  const primaryKey=(r.model==='deepseek')?settings.deepseek:settings.gemini;
+  if(!primaryKey){alert('Введите ключ в Настройках (⚙)');return}
+  const c=document.getElementById('chatMessages');const wait=document.createElement('div');wait.className='msg bot';wait.textContent='…';wait.id='waitMsg';c.appendChild(wait);c.scrollTop=c.scrollHeight;
+  try{
+    let reply;
+    try{
+      reply=await callAI(r,text,primaryKey);
+    }catch(e1){
+      if(settings.autoSwitch){
+        const altModel=(r.model==='deepseek')?'gemini':'deepseek';
+        const altKey=(altModel==='deepseek')?settings.deepseek:settings.gemini;
+        if(altKey){
+          try{reply=await callAI({...r,model:altModel},text,altKey)}
+          catch(e2){throw new Error('Обе модели не ответили: '+e1.message+' / '+e2.message)}
+        }else{throw e1}
+      }else{throw e1}
+    }
+    document.getElementById('waitMsg')?.remove();
+    await dbAdd('messages',{roleId:currentRoleId,sender:'bot',text:reply,timestamp:Date.now()});
+    await loadMessages(currentRoleId);
+  }catch(e){
+    document.getElementById('waitMsg')?.remove();
+    const err=document.createElement('div');err.className='msg bot';err.textContent='Ошибка: '+e.message;c.appendChild(err);c.scrollTop=c.scrollHeight;
+  }
+}
+async function callAI(role,userText,key){
+  const notes=await dbGet('notes',role.id);
+  const mem=notes?notes.content:'';
+  const sys=`Ты ведёшь ролевую игру. Отвечай от лица персонажа, кратко и атмосферно.
+Вселенная: ${role.world||'не указана'}
+Сюжет: ${role.plot||'не указан'}
+Детали мира: ${role.details||'не указаны'}
+Персонаж (твой): ${role.character||'не указан'}
+Память (важное): ${mem||'пока пусто'}`;
+  if(role.model==='deepseek'){
+    const res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:sys},{role:'user',content:userText}],temperature:1.0})});
+    if(!res.ok)throw new Error('DeepSeek: '+res.status);
+    const j=await res.json();return j.choices[0].message.content;
+  }else{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:[{role:'user',parts:[{text:userText}]}]})});
+    if(!res.ok)throw new Error('Gemini: '+res.status);
+    const j=await res.json();return j.candidates[0].content.parts[0].text;
+  }
+}
+function toggleNotes(){document.getElementById('notesPanel').classList.toggle('hidden')}
+async function loadNotes(id){const n=await dbGet('notes',id);document.getElementById('notesContent').value=n?n.content:''}
+async function saveNotes(){if(!currentRoleId)return;await dbPut('notes',{roleId:currentRoleId,content:document.getElementById('notesContent').value});alert('Сохранено')}
+
+// ===== СТАРТ =====
+initDB().then(async()=>{
+  const c=await dbGet('notes','__colors__');
+  if(c&&c.colors)colors={...defaultColors,...c.colors};
+  applyColors();
+  const s=await dbGet('notes','__settings__');
+  if(s)settings={gemini:s.gemini||'',deepseek:s.deepseek||'',autoSwitch:!!s.autoSwitch};
+  await renderCatalog();
+}).catch(e=>alert('DB: '+e));
+document.getElementById('chatInput')?.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'});
+</script>
+</body>
+</html>
